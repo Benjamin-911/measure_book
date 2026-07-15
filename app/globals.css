@@ -33,10 +33,10 @@
   --success: #27A66B;
   --success-bg: rgba(39, 166, 107, 0.1);
 
-  /* Fonts */
-  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+/* Fonts */
+--font-serif: var(--font-serif-raw), Georgia, 'Times New Roman', serif;
+--font-sans: var(--font-sans-raw), system-ui, -apple-system, sans-serif;
+--font-mono: var(--font-mono-raw), 'Menlo', 'Consolas', monospace;
 
   /* Spacing */
   --space-xs: 4px;
