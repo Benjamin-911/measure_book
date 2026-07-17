@@ -4,7 +4,15 @@ import { useEffect, useState, Fragment } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { ALL_FIELDS } from '@/lib/fields';
+import { FIELD_GROUPS } from '@/lib/fields';
+
+const UNIT_LABEL = { in: '"', cm: ' cm' };
+
+const ALL_FIELDS = Array.from(
+  new Map(
+    FIELD_GROUPS.flatMap((g) => g.fields).map((f) => [f.key, f])
+  ).values()
+);
 
 export default function MeasurementHistory() {
   const { id } = useParams();
@@ -90,9 +98,12 @@ export default function MeasurementHistory() {
       {display.map((entry, displayIndex) => {
         const chronoIndex = chronological.findIndex((e) => e._key === entry._key);
         const previous = chronoIndex > 0 ? chronological[chronoIndex - 1] : null;
+        const entryUnit = entry.unit === 'cm' ? 'cm' : 'in';
+        const unitSuffix = UNIT_LABEL[entryUnit];
+        const unitChanged = previous && (previous.unit === 'cm' ? 'cm' : 'in') !== entryUnit;
 
         const changedKeys = new Set(
-          previous
+          previous && !unitChanged
             ? ALL_FIELDS.filter(
                 (f) => String(entry[f.key] ?? '') !== String(previous[f.key] ?? '')
               ).map((f) => f.key)
@@ -107,8 +118,17 @@ export default function MeasurementHistory() {
                 <span className="measure-section-title" style={{ marginBottom: 0 }}>
                   {entry.taken_date}
                 </span>
-                {entry._isCurrent && <span className="badge badge-accent">Current</span>}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <span className="badge badge-muted">{entryUnit}</span>
+                  {entry._isCurrent && <span className="badge badge-accent">Current</span>}
+                </div>
               </div>
+
+              {unitChanged && (
+                <div className="inline-error" style={{ background: 'var(--secondary-bg)', color: 'var(--secondary)', border: 'none', marginBottom: 10 }}>
+                  Unit changed from {previous.unit === 'cm' ? 'cm' : 'in'} — values below aren't directly comparable to the previous entry
+                </div>
+              )}
 
               <div className="measure-grid">
                 {ALL_FIELDS.map((f) => {
@@ -119,10 +139,10 @@ export default function MeasurementHistory() {
                     <div key={f.key} className="measure-cell">
                       <div className="measure-label">{f.label}</div>
                       <div className="measure-value">
-                        {value}
+                        {value}{unitSuffix}
                         {changed && previous && (
                           <span style={{ fontSize: 10, color: 'var(--ink-faint)', fontWeight: 400, display: 'block' }}>
-                            was {previous[f.key]}
+                            was {previous[f.key]}{unitSuffix}
                           </span>
                         )}
                       </div>

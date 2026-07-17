@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { FIELD_GROUPS } from '@/lib/fields';
-import { getInitials } from '@/lib/utils';
+
+const UNIT_LABEL = { in: '"', cm: ' cm' };
 
 export default function ClientProfile() {
   const { id } = useParams();
@@ -47,20 +48,20 @@ export default function ClientProfile() {
         .single();
 
       setProfile(profileData || null);
-      setForm(profileData || {});
+      setForm(profileData || { unit: 'in' });
       setLoading(false);
     }
     if (id) load();
   }, [id]);
 
   function startEditing() {
-    setForm(profile ? { ...profile } : {});
+    setForm(profile ? { ...profile } : { unit: 'in' });
     setEditing(true);
     window.scrollTo(0, 0);
   }
 
   function cancelEditing() {
-    setForm(profile || {});
+    setForm(profile || { unit: 'in' });
     setEditing(false);
   }
 
@@ -68,17 +69,11 @@ export default function ClientProfile() {
     setSaving(true);
 
     if (profile) {
-      const { error: historyError } = await supabase.from('measurement_history').insert({
+      await supabase.from('measurement_history').insert({
         client_id: id,
         snapshot: profile,
         taken_date: profile.taken_date,
       });
-
-      if (historyError) {
-        showToast(historyError.message, 'error');
-        setSaving(false);
-        return;
-      }
     }
 
     const record = {
@@ -93,7 +88,7 @@ export default function ClientProfile() {
       });
     });
     record.fit_notes = form.fit_notes || null;
-    record.unit = form.unit || 'in';
+    record.unit = form.unit === 'cm' ? 'cm' : 'in';
 
     let result;
 
@@ -135,6 +130,15 @@ export default function ClientProfile() {
     }
   }
 
+  function getInitials(name) {
+    return name
+      .split(' ')
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }
+
   if (loading) {
     return (
       <main className="page-container">
@@ -157,6 +161,9 @@ export default function ClientProfile() {
     );
   }
 
+  const displayUnit = profile?.unit === 'cm' ? 'cm' : 'in';
+  const unitSuffix = UNIT_LABEL[displayUnit];
+
   return (
     <main className="page-container has-action-bar">
       {!editing && (
@@ -174,15 +181,37 @@ export default function ClientProfile() {
         <div className="profile-info">
           <div className="profile-name">{client.name}</div>
           {client.phone && <div className="profile-phone">{client.phone}</div>}
-          <div style={{ marginTop: 6 }}>
+          <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
             {profile ? (
               <span className="badge badge-accent">Measured {profile.taken_date}</span>
             ) : (
               <span className="badge badge-muted">Not measured yet</span>
             )}
+            {profile && <span className="badge badge-muted">{displayUnit}</span>}
           </div>
         </div>
       </div>
+
+      {editing && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <button
+            type="button"
+            className={form.unit !== 'cm' ? 'btn btn-primary' : 'btn btn-ghost'}
+            style={{ flex: 1, minHeight: 40, padding: '8px 12px', fontSize: 13 }}
+            onClick={() => setForm({ ...form, unit: 'in' })}
+          >
+            Inches
+          </button>
+          <button
+            type="button"
+            className={form.unit === 'cm' ? 'btn btn-primary' : 'btn btn-ghost'}
+            style={{ flex: 1, minHeight: 40, padding: '8px 12px', fontSize: 13 }}
+            onClick={() => setForm({ ...form, unit: 'cm' })}
+          >
+            Centimeters
+          </button>
+        </div>
+      )}
 
       {FIELD_GROUPS.map((group, gi) => (
         <Fragment key={group.label}>
@@ -204,7 +233,7 @@ export default function ClientProfile() {
                     />
                   ) : (
                     <div className={`measure-value ${!profile?.[f.key] ? 'measure-value-empty' : ''}`}>
-                      {profile?.[f.key] ? profile[f.key] : '–'}
+                      {profile?.[f.key] ? `${profile[f.key]}${unitSuffix}` : '–'}
                     </div>
                   )}
                 </div>
